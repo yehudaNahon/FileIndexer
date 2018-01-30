@@ -60,21 +60,17 @@ namespace FileIndexer
                 // add all the words found to the dictionary
                 foreach (var word in fileWords)
                 {
+                    
                     wordList.Add(new WordInFile{word = word, file = id });
                 }
             }
 
+            //wordList.ForEach(iter => Console.WriteLine(String.Format("{0} => {1}", iter.file, iter.word)));
+
             // create a dictionary by word with a list of files that use that word
             var newWordsTable = wordList.GroupBy(t => t.word).ToDictionary(x => x.Key, t => t.Select(g => g.file).Distinct().ToList());
-
-            // add the new word table to the old one
-            foreach (var word in newWordsTable)
-            {
-                
-                wordTable[word.Key] = wordTable[word.Key].Concat(word.Value).ToList();
-            }
-
-            foreach(var word in wordTable)
+            
+            foreach(var word in newWordsTable)
             {
                 Console.Write(String.Format("{0} => ", word.Key));
                 word.Value.ForEach(file => Console.Write(String.Format("{0} |", file)));
