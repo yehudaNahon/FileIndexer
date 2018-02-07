@@ -10,13 +10,19 @@ namespace ClassLibrary1
 {
     public class SearchDB
     {
-        public SearchDB()
+        public SearchDB(string path)
         {
+            if(!Directory.Exists(path))
+            {
+                Directory.CreateDirectory(path);
+            }
+
+            storingPath = path;
             fileList = new List<string>();
             words = new Dictionary<string, List<int>>();
             blackList = new List<string>();
         }
-
+        
         public void IndexFiles(string[] files)
         {
             int id = 0;
@@ -31,18 +37,13 @@ namespace ClassLibrary1
                     Console.WriteLine(String.Format("file {0} is already indexed", file));
                     continue;
                 }
+
+                id = StoreFile(file);
                 
-                // get a list of words from the file
-                var fileWords = GetWordsFromFile(file);
-
-                // the id will be the next index in the list
-                id = files.Count();
-                fileList.Add(file);
-
                 // add all the words found to the dictionary
-                foreach (var word in fileWords)
+                foreach (var word in GetWordsFromFile(file))
                 {
-                    if (blackList.Contains(word))
+                    if (!blackList.Contains(word))
                     {
                         wordList.Add(new WordInFile { word = word, file = id });
                     }
@@ -52,6 +53,7 @@ namespace ClassLibrary1
             // create a dictionary by word with a list of files that use that word
             var newWordsTable = wordList.GroupBy(t => t.word).ToDictionary(x => x.Key, t => t.Select(g => g.file).Distinct().ToList());
 
+            // combine all the old words with the new
             words = words.Concat(newWordsTable).ToDictionary(pair => pair.Key, pair => pair.Value);
         }
 
@@ -74,6 +76,21 @@ namespace ClassLibrary1
             return words.ToList();
         }
 
+        private int StoreFile(string file)
+        {
+            var fileName = Path.GetFileName(file);
+            var fullPath = Path.Combine(storingPath, fileName);
+            
+            File.Copy(file, fullPath);
+
+            // un comment when you want to remove from src
+            //File.Delete(file);
+
+            fileList.Add(fileName);
+            return fileList.Count();
+        }
+
+        public string storingPath;
         public List<string> fileList { get; set; }
         public  Dictionary<string, List<int>> words { get; set; }
         public List<string> blackList { get; set; }

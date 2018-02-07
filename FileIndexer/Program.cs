@@ -14,19 +14,18 @@ namespace FileIndexer
         static void Main(string[] args)
         {
             var dbPath = "testDb.json";
-            var path = "C:\\Users\\yehuda nahon\\Documents\\books";
+            var srcPath = "C:\\Users\\yehuda nahon\\Documents\\books";
             var db = GetDB(dbPath); 
             
             // check the path is a valid path
-            if(!IsDirectory(path))
+            if(!IsDirectory(srcPath))
             {
                 Console.WriteLine("path is not a directory");
             }
 
-            // get all the files in the directory
-            var files = Directory.GetFiles(path);
-
             Console.WriteLine("indexing files...");
+
+            var files = Directory.GetFiles(srcPath);
             db.IndexFiles(files);
             
             Console.WriteLine("updating data base");
@@ -41,6 +40,11 @@ namespace FileIndexer
             
             Console.WriteLine("finished writing to json file");
         }
+        
+        static void Move(string file, string location)
+        {
+            
+        }
 
         static void UpdateDB(string path, SearchDB dB)
         {
@@ -54,7 +58,8 @@ namespace FileIndexer
 
         static SearchDB GetDB(string path)
         {
-            SearchDB db = new SearchDB();
+            var storingFolder = "IndexedFiles";
+            SearchDB db = new SearchDB(storingFolder);
             // check if theres a db to read
             if (File.Exists(path))
             {
@@ -67,7 +72,7 @@ namespace FileIndexer
                 catch(Exception e)
                 {
                     Console.WriteLine("invalid db reseting");
-                    db = new SearchDB();
+                    db = new SearchDB(storingFolder);
                     UpdateDB(path, db);
                 }
                 
