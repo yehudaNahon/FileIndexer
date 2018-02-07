@@ -1,4 +1,6 @@
-﻿using System;
+﻿using ClassLibrary1;
+using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -8,29 +10,13 @@ using System.Threading.Tasks;
 namespace FileIndexer
 {
     class Program
-    {   
-        public struct WordAccurance
-        {
-            public int count;
-            public List<int> fileIds;
-        }
-        
-        public struct WordInFile
-        {
-            public string word;
-            public int file;
-        }
-
+    {
         static void Main(string[] args)
         {
-            var path = "C:\\Users\\yehud\\Documents\\books";
-
-            // the word table linking a word to its count and files using it
-            var wordTable = new Dictionary<string, List<int>>();
-
-            // a list of file path's 
-            var fileTable = new List<string>();
-
+            var dbPath = "testDb.json";
+            var path = "C:\\Users\\yehuda nahon\\Documents\\books";
+            var db = GetDB(dbPath); 
+            
             // check the path is a valid path
             if(!IsDirectory(path))
             {
@@ -40,68 +26,69 @@ namespace FileIndexer
             // get all the files in the directory
             var files = Directory.GetFiles(path);
 
-            int id = 0;
-            var wordList = new List<WordInFile>();
-            foreach (var file in files)
-            {
-                if(fileTable.Contains(file))
-                {
-                    Console.WriteLine("file {0} is already indexed");
-                    continue;
-                }
-
-                // get a list of words from the file
-                var fileWords = GetWordsFromFile(file);
-
-                // the id will be the next index in the list
-                id = fileTable.Count();
-                fileTable.Add(file);
-
-                // add all the words found to the dictionary
-                foreach (var word in fileWords)
-                {
-                    
-                    wordList.Add(new WordInFile{word = word, file = id });
-                }
-            }
-
-            //wordList.ForEach(iter => Console.WriteLine(String.Format("{0} => {1}", iter.file, iter.word)));
-
-            // create a dictionary by word with a list of files that use that word
-            var newWordsTable = wordList.GroupBy(t => t.word).ToDictionary(x => x.Key, t => t.Select(g => g.file).Distinct().ToList());
+            Console.WriteLine("indexing files...");
+            db.IndexFiles(files);
             
-            foreach(var word in newWordsTable)
+            Console.WriteLine("updating data base");
+            try
             {
-                Console.Write(String.Format("{0} => ", word.Key));
-                word.Value.ForEach(file => Console.Write(String.Format("{0} |", file)));
-                Console.WriteLine("");
+                UpdateDB(dbPath, db);
+            }
+            catch(Exception e)
+            {
+                Console.WriteLine("failed updating db");
             }
             
+            Console.WriteLine("finished writing to json file");
         }
-        
-        static List<string> GetWordsFromFile(string filePath)
+
+        static void UpdateDB(string path, SearchDB dB)
         {
-            // check file exists
-            if (!File.Exists(filePath))
+            using (StreamWriter file = File.CreateText(path))
             {
-                throw new ArgumentException("%s is'nt a file path", filePath);
+                JsonSerializer serializer = new JsonSerializer();
+                //serialize object directly into file stream
+                serializer.Serialize(file, dB);
+            }
+        }
+
+        static SearchDB GetDB(string path)
+        {
+            SearchDB db = new SearchDB();
+            // check if theres a db to read
+            if (File.Exists(path))
+            {
+                Console.WriteLine("reading from db");
+                var dbData = File.ReadAllText(path);
+                try
+                {
+                    db = JsonConvert.DeserializeObject<SearchDB>(dbData);
+                }
+                catch(Exception e)
+                {
+                    Console.WriteLine("invalid db reseting");
+                    db = new SearchDB();
+                    UpdateDB(path, db);
+                }
+                
+            }
+            else
+            {
+                // if the db doesnt exist create it for later updating
+                Console.WriteLine("creating db");
+                File.WriteAllText(path, JsonConvert.SerializeObject(db));
             }
 
-            // read all the text from the file
-            var text = File.ReadAllText(filePath);
-
-            // split the text to words and make all words lowercase to fix abnormality (also removing all single letters words from the list)
-            var punctuation = text.Where(Char.IsPunctuation).Distinct().ToArray();
-            
-            var words = text.Split(new char[0], StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim(punctuation).ToLower()).Where(x => x.Length > 1);
-            
-            return words.ToList();
+            return db;
         }
         
+
         static bool IsDirectory(string path)
         {
             return File.GetAttributes(path).HasFlag(FileAttributes.Directory);
         }
+
+
 
 
     }
