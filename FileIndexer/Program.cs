@@ -13,37 +13,98 @@ namespace FileIndexer
     {
         static void Main(string[] args)
         {
+            string[] options = { "Index Folder", "Search Words" };
             var dbPath = "testDb.json";
-            var srcPath = "C:\\Users\\yehuda nahon\\Documents\\books";
+            
             var db = GetDB(dbPath); 
             
+            while(true)
+            {
+                var choise = PrintMenu(options);
+                switch (choise)
+                {
+                    case 0:
+                        IndexFiles(db, dbPath);
+                        break;
+                    case 1:
+                        Search(db);
+                        break;
+                    default:
+                        Console.WriteLine("Please enter a valid option");
+                        break;
+                }
+            }
+        }
+        
+        static int PrintMenu(string[] options)
+        {
+            Console.WriteLine("Menu:");
+            int index = 0;
+            foreach(var option in options)
+            {
+                Console.WriteLine(index.ToString() + ") " + option);
+                index++;
+            }
+
+            string choise;
+            do
+            {
+                choise = Console.ReadLine();
+            } while (!int.TryParse(choise, out int number));
+            
+            return Convert.ToInt32(choise);
+        }
+
+        static void Search(SearchDB db)
+        {
+            Console.WriteLine("Enter the words to search");
+
+            var text = Console.ReadLine();
+
+            // split the text to words and make all words lowercase to fix abnormality (also removing all single letters words from the list)
+            var punctuation = text.Where(Char.IsPunctuation).Distinct().ToArray();
+
+            var words = text.Split(new char[0], StringSplitOptions.RemoveEmptyEntries).Select(x => x.Trim(punctuation).ToLower()).Where(x => x.Length > 1);
+
+            foreach(var word in words)
+            {
+                var files = db.SearchWord(word);
+                Console.WriteLine(word + ":");
+                files.ForEach(file => Console.WriteLine("- " + file));
+            }
+        }
+
+        static void IndexFiles(SearchDB db, string dbPath)
+        {
+            var storingFolder = "IndexedFiles";
+            var folder = "C:\\Users\\yehuda nahon\\Documents\\books";
             // check the path is a valid path
-            if(!IsDirectory(srcPath))
+            if (!IsDirectory(folder))
             {
                 Console.WriteLine("path is not a directory");
             }
 
+            if(!Directory.Exists(storingFolder))
+            {
+                Directory.CreateDirectory(storingFolder);
+            }
+
             Console.WriteLine("indexing files...");
 
-            var files = Directory.GetFiles(srcPath);
-            db.IndexFiles(files);
-            
+            var files = Directory.GetFiles(folder);
+            db.IndexFiles(files, storingFolder);
+
             Console.WriteLine("updating data base");
             try
             {
                 UpdateDB(dbPath, db);
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 Console.WriteLine("failed updating db");
             }
-            
+
             Console.WriteLine("finished writing to json file");
-        }
-        
-        static void Move(string file, string location)
-        {
-            
         }
 
         static void UpdateDB(string path, SearchDB dB)
@@ -58,8 +119,7 @@ namespace FileIndexer
 
         static SearchDB GetDB(string path)
         {
-            var storingFolder = "IndexedFiles";
-            SearchDB db = new SearchDB(storingFolder);
+            SearchDB db = new SearchDB();
             // check if theres a db to read
             if (File.Exists(path))
             {
@@ -72,7 +132,7 @@ namespace FileIndexer
                 catch(Exception e)
                 {
                     Console.WriteLine("invalid db reseting");
-                    db = new SearchDB(storingFolder);
+                    db = new SearchDB();
                     UpdateDB(path, db);
                 }
                 
